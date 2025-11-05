@@ -215,7 +215,6 @@ static bool move_normal_pmd(struct vm_area_struct *vma, unsigned long old_addr,
 		  unsigned long new_addr, pmd_t *old_pmd, pmd_t *new_pmd)
 {
 	spinlock_t *old_ptl, *new_ptl, *old_pte_ptl;
-
 	struct mm_struct *mm = vma->vm_mm;
 	pmd_t pmd;
 
@@ -243,6 +242,14 @@ static bool move_normal_pmd(struct vm_area_struct *vma, unsigned long old_addr,
 	 * this point, and verify that it really is empty. We'll see.
 	 */
 	if (WARN_ON_ONCE(!pmd_none(*new_pmd)))
+		return false;
+
+	/*
+	 * We need to ensure that fast-remap is not racing with a concurrent
+	 * SPF is in progress, since a fast remap can change the vmf's pmd
+	 * and hence its ptl from under it, by moving the pmd_t entry.
+	 */
+	if (!trylock_vma_ref_count(vma))
 		return false;
 
 	/*
