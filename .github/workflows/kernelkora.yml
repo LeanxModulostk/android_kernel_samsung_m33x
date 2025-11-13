@@ -35,8 +35,7 @@ jobs:
           echo "CONFIG_TCP_CONG_BBR3=n" >> arch/arm64/configs/gki_defconfig
 
           # Renombrar algoritmo a bbrv3 en el código fuente
-          sed -i 's/\.name[[:space:]]*=[[:space:]]*"bbr"/.name = "bbrv3"/' net/ipv4/tcp_bbr.c
-          sed -i 's/BBR (Bottleneck Bandwidth and RTT)/BBRv3 (Modified by DoraCore)/' net/ipv4/tcp_bbr.c
+          sed -Ei 's/(\.name[[:space:]]*=[[:space:]]*")bbr(")/\1bbrv3\2/' net/ipv4/tcp_bbr.c
 
       - name: Build tcp_bbrv3.ko only
         run: |
@@ -48,6 +47,9 @@ jobs:
           export LLVM_IAS=1
           export CROSS_COMPILE=aarch64-linux-gnu-
           export CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
+
+          # 🔧 Quitar referencias a KernelSU para evitar error de Kconfig
+          sed -i '/drivers\/kernelsu\/kernel\/Kconfig/d' drivers/Kconfig || true
 
           # Preparar entorno de módulos
           make ARCH=arm64 gki_defconfig
