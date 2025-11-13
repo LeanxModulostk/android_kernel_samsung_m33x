@@ -39,20 +39,31 @@ jobs:
         run: |
           cd $KERNEL_PATH
 
-          # 1. eliminar flag regalloc-enable-advisor
-          sed -i 's/-regalloc-enable-advisor=[a-zA-Z0-9_-]*//g' Makefile
+          echo "🔥 Removing modern LLVM flags for clang-r416183b compatibility"
 
-          # 2. eliminar flags exclusivos de LLVM 14+
-          sed -i 's/-mlsl//g' Makefile
-          sed -i 's/-moutline-atomics//g' Makefile
-          sed -i 's/-fno-stack-protector-guard//g' Makefile
-          sed -i 's/-mbranch-protection=pac-ret//g' Makefile
-
-          # 3. algunos kernels lo incluyen en scripts/*
+          # Remove advisor flags (LLVM 14+)
+          sed -i 's/-regalloc-enable-advisor=[^ ]*//g' -i Makefile
           find . -type f -name "Makefile*" -exec sed -i 's/-regalloc-enable-advisor=[^ ]*//g' {} \;
-          find . -type f -name "Makefile*" -exec sed -i 's/-moutline-atomics//g' {} \;
 
-          echo "🔥 Kernel patched for Clang r416183b"
+          # Remove hot-cold-split (LLVM 15+)
+          sed -i 's/-hot-cold-split=[^ ]*//g' Makefile
+          find . -type f -name "Makefile*" -exec sed -i 's/-hot-cold-split=[^ ]*//g' {} \;
+
+          # Remove modern AArch64 flags unsupported by clang-12
+          for FLAG in \
+            "-mlsl" \
+            "-moutline-atomics" \
+            "-mbranch-protection=pac-ret" \
+            "-fno-stack-protector-guard" \
+            "-fexperimental-new-pass-manager" \
+            "-fstrict-flex-arrays=3" \
+            "-ftrivial-auto-var-init=zero" \
+            "-fno-addrsig"
+          do
+            find . -type f -name "Makefile*" -exec sed -i "s|$FLAG||g" {} \;
+          done
+
+          echo "✨ Patching complete"
           
       - name: Enable BBRv3 and CUBIC as modules
         run: |
