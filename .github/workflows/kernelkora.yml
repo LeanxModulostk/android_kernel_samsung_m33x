@@ -1,4 +1,4 @@
-name: GKI | Build BBRv3 Module Only
+name: GKI | Build BBRv3 + Cubic Modules
 
 on:
   workflow_dispatch:
@@ -21,23 +21,27 @@ jobs:
           mkdir android-kernel && cd android-kernel
           git clone --depth=1 -b Rebase https://github.com/dopaemon/android_kernel_xiaomi_common.git common
           cd common
-          # Clonar toolchain Clang
           git clone --depth=1 -b 14.0 https://gitlab.com/vermouth/android_prebuilts_clang_host_linux-x86_clang-r536225 ../clang
           echo "KERNEL_PATH=$(pwd)" >> $GITHUB_ENV
 
-      - name: Enable BBR as module and rename to BBRv3
+      - name: Enable BBRv3 and CUBIC as modules
         run: |
           cd $KERNEL_PATH
-          # Activar BBR como módulo en defconfig
+
+          # Quitar referencias a KernelSU si existen
+          sed -i '/drivers\/kernelsu\/kernel\/Kconfig/d' drivers/Kconfig || true
+
+          # Forzar BBR y CUBIC como módulos
           echo "CONFIG_TCP_CONG_BBR=m" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_TCP_CONG_CUBIC=m" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_DEFAULT_CUBIC=n" >> arch/arm64/configs/gki_defconfig
           echo "CONFIG_DEFAULT_BBR=n" >> arch/arm64/configs/gki_defconfig
-          echo "CONFIG_TCP_CONG_CUBIC=y" >> arch/arm64/configs/gki_defconfig
           echo "CONFIG_TCP_CONG_BBR3=n" >> arch/arm64/configs/gki_defconfig
 
-          # Renombrar algoritmo a bbrv3 en el código fuente
+          # Cambiar nombre del algoritmo a bbrv3
           sed -Ei 's/(\.name[[:space:]]*=[[:space:]]*")bbr(")/\1bbrv3\2/' net/ipv4/tcp_bbr.c
 
-      - name: Build tcp_bbrv3.ko only
+      - name: Build tcp_bbrv3.ko and tcp_cubic.ko
         run: |
           cd $KERNEL_PATH
           export PATH="$GITHUB_WORKSPACE/android-kernel/clang/bin:$PATH"
@@ -48,21 +52,25 @@ jobs:
           export CROSS_COMPILE=aarch64-linux-gnu-
           export CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
 
-          # 🔧 Quitar referencias a KernelSU para evitar error de Kconfig
-          sed -i '/drivers\/kernelsu\/kernel\/Kconfig/d' drivers/Kconfig || true
-
-          # Preparar entorno de módulos
+          # Preparar entorno
           make ARCH=arm64 gki_defconfig
           make ARCH=arm64 CC=clang CROSS_COMPILE=aarch64-linux-gnu- modules_prepare
 
-          # Compilar solo el módulo tcp_bbr
+          # Compilar solo los módulos de congestión TCP
           make ARCH=arm64 CC=clang CROSS_COMPILE=aarch64-linux-gnu- M=net/ipv4 modules
 
-          # Extraer tcp_bbr.ko y renombrar a tcp_bbrv3.ko
-          find . -name "tcp_bbr.ko" -exec cp {} $GITHUB_WORKSPACE/tcp_bbrv3.ko \; || echo "tcp_bbr.ko not found"
+          # Extraer módulos y renombrar
+          find . -name "tcp_bbr.ko" -exec cp {} $GITHUB_WORKSPACE/tcp_bbrv3.ko \;
+          find . -name "tcp_cubic.ko" -exec cp {} $GITHUB_WORKSPACE/tcp_cubic.ko \;
 
-      - name: Upload tcp_bbrv3.ko Artifact
+      - name: Upload tcp_bbrv3.ko
         uses: actions/upload-artifact@v4
         with:
           name: tcp_bbrv3-module
           path: tcp_bbrv3.ko
+
+      - name: Upload tcp_cubic.ko
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcp_cubic-module
+          path: tcp_cubic.ko
