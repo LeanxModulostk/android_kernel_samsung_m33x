@@ -1,4 +1,4 @@
-name: KBuild BBRv3
+name: KBuild BBRv3 
 
 on:
   workflow_dispatch:
@@ -29,10 +29,10 @@ jobs:
         find . -name "bbr.ko" || true
       continue-on-error: true
 
-    - name: Upload bbr.ko artifact
+    - name: Upload tcp_bbr.ko
       uses: actions/upload-artifact@v4
       with:
-        name: bbr-module
-        path: |
-          **/bbr.ko
+        name: tcp_bbr-module
+        path: kernel_build/tcp_bbr.ko
+
           
