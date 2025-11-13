@@ -1,0 +1,66 @@
+name: GKI | Build BBRv3 Module Only
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-bbrv3:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git ccache flex bison make libssl-dev libelf-dev bc wget curl dwarves
+
+      - name: Clone GKI Kernel Source
+        run: |
+          mkdir android-kernel && cd android-kernel
+          git clone --depth=1 -b Rebase https://github.com/dopaemon/android_kernel_xiaomi_common.git common
+          cd common
+          # Clonar toolchain Clang
+          git clone --depth=1 -b 14.0 https://gitlab.com/vermouth/android_prebuilts_clang_host_linux-x86_clang-r536225 ../clang
+          echo "KERNEL_PATH=$(pwd)" >> $GITHUB_ENV
+
+      - name: Enable BBR as module and rename to BBRv3
+        run: |
+          cd $KERNEL_PATH
+          # Activar BBR como módulo en defconfig
+          echo "CONFIG_TCP_CONG_BBR=m" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_DEFAULT_BBR=n" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_TCP_CONG_CUBIC=y" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_TCP_CONG_BBR3=n" >> arch/arm64/configs/gki_defconfig
+
+          # Renombrar algoritmo a bbrv3 en el código fuente
+          sed -i 's/\.name[[:space:]]*=[[:space:]]*"bbr"/.name = "bbrv3"/' net/ipv4/tcp_bbr.c
+          sed -i 's/BBR (Bottleneck Bandwidth and RTT)/BBRv3 (Modified by DoraCore)/' net/ipv4/tcp_bbr.c
+
+      - name: Build tcp_bbrv3.ko only
+        run: |
+          cd $KERNEL_PATH
+          export PATH="$GITHUB_WORKSPACE/android-kernel/clang/bin:$PATH"
+          export ARCH=arm64
+          export CC=clang
+          export LLVM=1
+          export LLVM_IAS=1
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          export CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
+
+          # Preparar entorno de módulos
+          make ARCH=arm64 gki_defconfig
+          make ARCH=arm64 CC=clang CROSS_COMPILE=aarch64-linux-gnu- modules_prepare
+
+          # Compilar solo el módulo tcp_bbr
+          make ARCH=arm64 CC=clang CROSS_COMPILE=aarch64-linux-gnu- M=net/ipv4 modules
+
+          # Extraer tcp_bbr.ko y renombrar a tcp_bbrv3.ko
+          find . -name "tcp_bbr.ko" -exec cp {} $GITHUB_WORKSPACE/tcp_bbrv3.ko \; || echo "tcp_bbr.ko not found"
+
+      - name: Upload tcp_bbrv3.ko Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcp_bbrv3-module
+          path: tcp_bbrv3.ko
