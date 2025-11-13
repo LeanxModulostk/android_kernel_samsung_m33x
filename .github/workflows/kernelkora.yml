@@ -35,6 +35,25 @@ jobs:
           echo "CLANG_PATH=$GITHUB_WORKSPACE/clang/bin" >> $GITHUB_ENV
           ./bin/clang --version
 
+      - name: Patch kernel for Clang r416183b compatibility
+        run: |
+          cd $KERNEL_PATH
+
+          # 1. eliminar flag regalloc-enable-advisor
+          sed -i 's/-regalloc-enable-advisor=[a-zA-Z0-9_-]*//g' Makefile
+
+          # 2. eliminar flags exclusivos de LLVM 14+
+          sed -i 's/-mlsl//g' Makefile
+          sed -i 's/-moutline-atomics//g' Makefile
+          sed -i 's/-fno-stack-protector-guard//g' Makefile
+          sed -i 's/-mbranch-protection=pac-ret//g' Makefile
+
+          # 3. algunos kernels lo incluyen en scripts/*
+          find . -type f -name "Makefile*" -exec sed -i 's/-regalloc-enable-advisor=[^ ]*//g' {} \;
+          find . -type f -name "Makefile*" -exec sed -i 's/-moutline-atomics//g' {} \;
+
+          echo "🔥 Kernel patched for Clang r416183b"
+          
       - name: Enable BBRv3 and CUBIC as modules
         run: |
           cd $KERNEL_PATH
