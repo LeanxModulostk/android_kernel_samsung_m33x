@@ -1,0 +1,38 @@
+name: KBuild
+
+on:
+  workflow_dispatch:
+
+jobs:
+  kb:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Clean
+      uses: rokibhasansagar/slimhub_actions@main
+
+    - name: Install tools
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y brotli zip zstd tar lz4 cpio xz-utils
+
+    - name: Build
+      run: |
+        curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -
+        bash build.sh "$(pwd)"
+
+    - name: Find and Upload bbr.ko
+      run: |
+        find . -name "bbr.ko" || true
+      continue-on-error: true
+
+    - name: Upload bbr.ko artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: bbr-module
+        path: |
+          **/bbr.ko
+          
