@@ -35,35 +35,19 @@ jobs:
           echo "CLANG_PATH=$GITHUB_WORKSPACE/clang/bin" >> $GITHUB_ENV
           ./bin/clang --version
 
-      - name: Patch kernel for Clang r416183b compatibility
+      - name: Patch kernel for Clang r416183b compatibility (remove -mllvm)
         run: |
           cd $KERNEL_PATH
+          echo "🔥 Removing ALL -mllvm flags (unsupported on clang-r416183b)"
 
-          echo "🔥 Removing modern LLVM flags for clang-r416183b compatibility"
+          # Remove all occurrences of: -mllvm <something>
+          find . -type f -name "Makefile*" -exec sed -Ei 's/-mllvm[[:space:]]+[^\ ]+//g' {} \;
 
-          # Remove advisor flags (LLVM 14+)
-          sed -i 's/-regalloc-enable-advisor=[^ ]*//g' -i Makefile
-          find . -type f -name "Makefile*" -exec sed -i 's/-regalloc-enable-advisor=[^ ]*//g' {} \;
+          # Some kernels have multiple -mllvm entries on the same line — clean remaining
+          find . -type f -name "Makefile*" -exec sed -Ei 's/-mllvm//g' {} \;
 
-          # Remove hot-cold-split (LLVM 15+)
-          sed -i 's/-hot-cold-split=[^ ]*//g' Makefile
-          find . -type f -name "Makefile*" -exec sed -i 's/-hot-cold-split=[^ ]*//g' {} \;
+          echo "✨ Removed all -mllvm flags"
 
-          # Remove modern AArch64 flags unsupported by clang-12
-          for FLAG in \
-            "-mlsl" \
-            "-moutline-atomics" \
-            "-mbranch-protection=pac-ret" \
-            "-fno-stack-protector-guard" \
-            "-fexperimental-new-pass-manager" \
-            "-fstrict-flex-arrays=3" \
-            "-ftrivial-auto-var-init=zero" \
-            "-fno-addrsig"
-          do
-            find . -type f -name "Makefile*" -exec sed -i "s|$FLAG||g" {} \;
-          done
-
-          echo "✨ Patching complete"
           
       - name: Enable BBRv3 and CUBIC as modules
         run: |
