@@ -32,8 +32,8 @@ jobs:
           sed -i '/drivers\/kernelsu\/kernel\/Kconfig/d' drivers/Kconfig || true
 
           # Forzar BBR y CUBIC como módulos
-          echo "CONFIG_TCP_CONG_BBR=m" >> arch/arm64/configs/gki_defconfig
-          echo "CONFIG_TCP_CONG_CUBIC=m" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_TCP_CONG_BBR=y" >> arch/arm64/configs/gki_defconfig
+          echo "CONFIG_TCP_CONG_CUBIC=y" >> arch/arm64/configs/gki_defconfig
           echo "CONFIG_DEFAULT_CUBIC=n" >> arch/arm64/configs/gki_defconfig
           echo "CONFIG_DEFAULT_BBR=n" >> arch/arm64/configs/gki_defconfig
           echo "CONFIG_TCP_CONG_BBR3=n" >> arch/arm64/configs/gki_defconfig
