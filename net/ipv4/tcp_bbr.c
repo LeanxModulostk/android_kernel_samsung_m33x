@@ -2339,7 +2339,7 @@ static void bbr_set_state(struct sock *sk, u8 new_state)
 
 static struct tcp_congestion_ops tcp_bbr_cong_ops __read_mostly = {
 	.flags		= TCP_CONG_NON_RESTRICTED | TCP_CONG_WANTS_CE_EVENTS,
-	.name		= "bbr",
+	.name		= "bbrv3",
 	.owner		= THIS_MODULE,
 	.init		= bbr_init,
 	.cong_control	= bbr_main,
@@ -2378,5 +2378,5 @@ MODULE_AUTHOR("Arjun Roy <arjunroy@google.com>");
 MODULE_AUTHOR("David Morley <morleyd@google.com>");
 
 MODULE_LICENSE("Dual BSD/GPL");
-MODULE_DESCRIPTION("TCP BBR (Bottleneck Bandwidth and RTT)");
+MODULE_DESCRIPTION("TCP BBRv3 (Bottleneck Bandwidth and RTT)");
 MODULE_VERSION(__stringify(BBR_VERSION));
