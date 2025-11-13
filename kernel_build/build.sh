@@ -82,16 +82,16 @@ make -j$(nproc --all) -C $(pwd) O=out $BUILD_ARGS
 make -j$(nproc --all) -C $(pwd) O=out INSTALL_MOD_STRIP="--strip-debug" INSTALL_MOD_PATH="$MODULES_OUTDIR" modules_install >/dev/null
 
 # --- Solo necesitamos los módulos, no el boot/dtb ---
-echo "✅ Kernel modules compiled successfully. Extracting tcp_bbr.ko..."
-find "$MODULES_OUTDIR" -name "tcp_bbr.ko" -exec cp {} "$(pwd)/kernel_build/" \; || echo "⚠️ tcp_bbr.ko not found"
-echo "✅ tcp_bbr.ko extraction complete."
+echo "✅ Kernel modules compiled successfully. Extracting tcp_cubic.ko..."
+find "$MODULES_OUTDIR" -name "tcp_cubic.ko" -exec cp {} "$(pwd)/kernel_build/" \; || echo "⚠️ tcp_cubic.ko not found"
+echo "✅ tcp_cubic.ko extraction complete."
 
 # Limpieza opcional
 rm -rf "$TMPDIR"
 rm -rf "$OUTDIR"
 
 # Salir antes de crear boot.img, dtb, etc.
-echo "🛑 Skipping boot/dtb build (only BBR module needed)."
+echo "🛑 Skipping boot/dtb build (only cubic module needed)."
 exit 0
 
 rm -rf "$TMPDIR"
